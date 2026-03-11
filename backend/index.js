@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { generateProposal } from "./gemini.js";
+import { saveProposal, getMockProducts } from "./database.js";
+import { logInteraction } from "./logger.js";
 
 dotenv.config();
 
@@ -11,6 +14,38 @@ app.use(express.json());
 // Health check
 app.get("/", (req, res) => {
   res.json({ status: "ok", module: "AI B2B Proposal Generator" });
+});
+
+// Generate proposal
+app.post("/generate", async (req, res) => {
+  try {
+    const { clientName, clientEmail, businessType, headcount, budget, priorities, additionalNotes } = req.body;
+
+    // Basic validation
+    if (!clientName || !clientEmail || !businessType || !headcount || !budget || !priorities) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    // Fetch mock products from DB
+    const products = await getMockProducts();
+    if (!products.length) {
+      return res.status(500).json({ error: "No products available in catalog." });
+    }
+
+    // Generate proposal via Gemini
+    const { result: proposalJson, prompt } = await generateProposal(req.body, products);
+
+    // Save proposal to DB
+    const saved = await saveProposal(req.body, proposalJson);
+
+    // Log the interaction
+    await logInteraction(saved.id, prompt, proposalJson);
+
+    res.json({ success: true, proposal: saved });
+  } catch (error) {
+    console.error("Error in /generate:", error.message);
+    res.status(500).json({ error: "Something went wrong." });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
