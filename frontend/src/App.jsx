@@ -1,11 +1,14 @@
-import React from 'react'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ProposalForm from "./pages/ProposalForm";
+import ProposalResult from "./pages/ProposalResult";
 
-const App = () => {
+export default function App() {
   return (
-    <div className='bg-red-400'>
-      Hello
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<ProposalForm />} />
+        <Route path="/result" element={<ProposalResult />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
-
-export default App
