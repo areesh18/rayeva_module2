@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import { generateProposal } from "./gemini.js";
 import { saveProposal, getMockProducts } from "./database.js";
 import { logInteraction } from "./logger.js";
+import { generatePDF } from "./pdf.js";
+import { supabase } from "./supabase.js";
 
 dotenv.config();
 
@@ -19,21 +21,41 @@ app.get("/", (req, res) => {
 // Generate proposal
 app.post("/generate", async (req, res) => {
   try {
-    const { clientName, clientEmail, businessType, headcount, budget, priorities, additionalNotes } = req.body;
+    const {
+      clientName,
+      clientEmail,
+      businessType,
+      headcount,
+      budget,
+      priorities,
+      additionalNotes,
+    } = req.body;
 
     // Basic validation
-    if (!clientName || !clientEmail || !businessType || !headcount || !budget || !priorities) {
+    if (
+      !clientName ||
+      !clientEmail ||
+      !businessType ||
+      !headcount ||
+      !budget ||
+      !priorities
+    ) {
       return res.status(400).json({ error: "All fields are required." });
     }
 
     // Fetch mock products from DB
     const products = await getMockProducts();
     if (!products.length) {
-      return res.status(500).json({ error: "No products available in catalog." });
+      return res
+        .status(500)
+        .json({ error: "No products available in catalog." });
     }
 
     // Generate proposal via Gemini
-    const { result: proposalJson, prompt } = await generateProposal(req.body, products);
+    const { result: proposalJson, prompt } = await generateProposal(
+      req.body,
+      products,
+    );
 
     // Save proposal to DB
     const saved = await saveProposal(req.body, proposalJson);
@@ -45,6 +67,27 @@ app.post("/generate", async (req, res) => {
   } catch (error) {
     console.error("Error in /generate:", error.message);
     res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// Download proposal as PDF
+app.get("/proposal/:id/pdf", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("proposals")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: "Proposal not found." });
+    }
+
+    generatePDF(data, res);
+  } catch (error) {
+    console.error("Error in /proposal/:id/pdf:", error.message);
+    res.status(500).json({ error: "Failed to generate PDF." });
   }
 });
 
