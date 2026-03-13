@@ -7,9 +7,6 @@ export const logInteraction = async (proposalId, prompt, response) => {
       prompt_sent: prompt,
       raw_response: JSON.stringify(response),
       model_used: "gemini-1.5-flash",
-      created_at: new Date().toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-      }),
     },
   ]);
 
